@@ -3,6 +3,8 @@ from PyQt5.QtWidgets import QMainWindow, QStatusBar, QTableView, QAction, QMessa
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QUrl
 import csv
+import sys
+import os
 
 
 class Editor(QMainWindow):
@@ -14,6 +16,7 @@ class Editor(QMainWindow):
         self.interface()
 
     def interface(self):
+
         MenuBar = self.menuBar()
 
         FileMenu = MenuBar.addMenu("&File")
@@ -29,6 +32,18 @@ class Editor(QMainWindow):
         OpenButton.setStatusTip('Open an existing file.')
         OpenButton.triggered.connect(self.open_existing_file)
         FileMenu.addAction(OpenButton)
+
+        SaveButton = QAction("&Save", self)
+        SaveButton.setShortcut('Ctrl+S')
+        SaveButton.setStatusTip('Save actual file')
+        SaveButton.triggered.connect(self.save_current_file)
+        FileMenu.addAction(SaveButton)
+
+        SaveAsButton = QAction("&Save As", self)
+        SaveAsButton.setShortcut('Ctrl+Alt+S')
+        SaveButton.setStatusTip('Save as actual file')
+        SaveAsButton.triggered.connect(self.save_as_current_file)
+        FileMenu.addAction(SaveAsButton)
 
         font = MenuBar.font()
         font.setPointSize(11)
@@ -55,12 +70,14 @@ class Editor(QMainWindow):
         self.setWindowTitle(self.title + self.actual_file_name)
 
     def center(self):
+
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
     def define_all_signals_without_descriptions(self):
+
         config_file_path = "config/config.csv"
 
         with open(config_file_path, "r", encoding="utf-8-sig") as file:
@@ -72,10 +89,12 @@ class Editor(QMainWindow):
         self.Table.setModel(self.Model)
 
     def show_question_message_box(self, message_text, window_title="Question", buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel):
+
         Reply = QMessageBox.question(self, window_title, message_text, buttons)
         return Reply
 
     def create_new_file(self):
+
         message_text = "Do you want to save the actual file before creating a new one?"
         Reply = self.show_question_message_box(message_text)
 
@@ -92,12 +111,14 @@ class Editor(QMainWindow):
             self.StatusField.showMessage("New file was created.")
 
     def get_signals_list_as_dictionary(self):
+
         return {
             signal: description
             for signal, description in self.signals_and_descriptions
         }
 
     def show_critical_message_box(self, message_text="Not the right data format!", window_title="Error", button=QMessageBox.Cancel):
+
         Reply = QMessageBox.critical(self, window_title, message_text, button)
         return Reply
 
@@ -157,4 +178,44 @@ class Editor(QMainWindow):
                     )
 
     def save_current_file(self):
-        pass
+
+        if self.actual_file_name == "unnamed.csv" or self.actual_file_name == ".csv":
+            self.save_as_current_file()
+
+        else:
+            if not self.file_path:
+                directory_name = os.path.dirname(sys.argv[0])
+                self.file_path = directory_name + "/" + self.actual_file_name
+
+            with open(self.file_path, "w", encoding="utf-8-sig", newline="") as file:
+                writer = csv.writer(file, delimiter=";")
+                writer.writerows(self.signals_and_descriptions)
+
+                message = 'File was saved under: {}.'
+                self.StatusField.showMessage(
+                    message.format(str(self.file_path))
+                )
+
+    def save_as_current_file(self):
+
+        self.file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save this file as...",
+            "",
+            "*.csv"
+        )
+
+        if self.file_path:
+
+            with open(self.file_path, "w", encoding="utf-8-sig", newline="") as file:
+                writer = csv.writer(file, delimiter=";")
+                writer.writerows(self.signals_and_descriptions)
+
+                self.actual_file_name = QUrl.fromLocalFile(
+                    self.file_path).fileName()
+                self.setWindowTitle(self.title + self.actual_file_name)
+
+                message = 'File was saved as {} under: {}.'
+                self.StatusField.showMessage(
+                    message.format(self.actual_file_name, str(self.file_path))
+                )
