@@ -1,7 +1,7 @@
 from TableModel import TableModel
 from PyQt5.QtWidgets import QMainWindow, QStatusBar, QTableView, QAction, QMessageBox, QDesktopWidget, QFileDialog
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QUrl
+from PyQt5.QtCore import QUrl, Qt
 import csv
 import sys
 import os
@@ -44,6 +44,14 @@ class Editor(QMainWindow):
         SaveButton.setStatusTip('Save as actual file')
         SaveAsButton.triggered.connect(self.save_as_current_file)
         FileMenu.addAction(SaveAsButton)
+
+        FileMenu.addSeparator()
+
+        ExitButton = QAction("&Exit", self)
+        ExitButton.setShortcut('Alt+F4')
+        ExitButton.setStatusTip('Close application')
+        ExitButton.triggered.connect(self.close_editor)
+        FileMenu.addAction(ExitButton)
 
         font = MenuBar.font()
         font.setPointSize(11)
@@ -219,3 +227,35 @@ class Editor(QMainWindow):
                 self.StatusField.showMessage(
                     message.format(self.actual_file_name, str(self.file_path))
                 )
+
+    def close_editor(self):
+
+        self.close()
+
+    def closeEvent(self, event):
+
+        message_text = "Do you want to close editor?"
+        buttons = QMessageBox.Yes | QMessageBox.No
+        Reply = self.show_question_message_box(
+            message_text,
+            buttons=buttons
+        )
+
+        if Reply == QMessageBox.Yes:
+            message_text = "Do you want to save actual file before closing?"
+            Reply = self.show_question_message_box(
+                message_text,
+                buttons=buttons
+            )
+
+            if Reply == QMessageBox.Yes:
+                self.save_current_file()
+
+            event.accept()
+        else:
+            event.ignore()
+
+    def keyPressEvent(self, event):
+
+        if event.key() == Qt.Key_Escape:
+            self.close_editor()
