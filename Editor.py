@@ -1,6 +1,7 @@
 from TableModel import TableModel
 from ProgressDialog import ProgressDialog
 from SignalDataBase import SignalDataBase
+from ModifyDialogWindow import ModifyDialogWindow
 from PyQt5.QtWidgets import QMainWindow, QStatusBar, QTableView, QAction, QMessageBox, QDesktopWidget, QFileDialog
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QUrl, Qt
@@ -28,6 +29,7 @@ class Editor(QMainWindow):
         MenuBar = self.menuBar()
 
         FileMenu = MenuBar.addMenu("&File")
+        OptionsMenu = MenuBar.addMenu("&Options")
 
         self.NewButton = QAction("&New", self)
         self.NewButton.setShortcut('Ctrl+N')
@@ -69,15 +71,30 @@ class Editor(QMainWindow):
         ExitButton.triggered.connect(self.close_editor)
         FileMenu.addAction(ExitButton)
 
+        AddApplicationButton = QAction("&Add application", self)
+        AddApplicationButton.setStatusTip(
+            'Add signals description of chosen application')
+        AddApplicationButton.triggered.connect(
+            self.add_application_signals_descriptions)
+        OptionsMenu.addAction(AddApplicationButton)
+
+        RemoveApplicationButton = QAction("&Remove application", self)
+        RemoveApplicationButton.setStatusTip(
+            'Remove signals description of chosen application')
+        RemoveApplicationButton.triggered.connect(
+            self.remove_application_signals_descriptions)
+        OptionsMenu.addAction(RemoveApplicationButton)
+
         font = MenuBar.font()
         font.setPointSize(11)
         MenuBar.setFont(font)
 
         self.Table = QTableView()
-        self.headerdata = ['Signal', 'Description']
+        self.header_data = ['Signal', 'Description']
         self.Table.setFont(font)
 
-        self.Model = TableModel(self.signals_and_descriptions, self.headerdata)
+        self.Model = TableModel(
+            self.signals_and_descriptions, self.header_data)
         self.Table.setModel(self.Model)
         self.Table.horizontalHeader().setStretchLastSection(True)
         self.setCentralWidget(self.Table)
@@ -109,7 +126,8 @@ class Editor(QMainWindow):
             return [[signal, ""] for signal, _ in fileReader]
 
     def refresh_table_view(self):
-        self.Model = TableModel(self.signals_and_descriptions, self.headerdata)
+        self.Model = TableModel(
+            self.signals_and_descriptions, self.header_data)
         self.Table.setModel(self.Model)
 
     def show_question_message_box(self, message_text, window_title="Question", buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel):
@@ -286,6 +304,7 @@ class Editor(QMainWindow):
             self.show_critical_message_box(
                 message_text=message_text,
                 button=button)
+            self.successful_selection_existing_database = False
         else:
             self.successful_selection_existing_database = self.SignalDataBase.try_to_select_existing_database()
 
@@ -366,3 +385,72 @@ class Editor(QMainWindow):
                 message_text = "Selected path {} does not contain any csv files.".format(
                     base_path)
                 self.show_information_message_box(message_text)
+
+    def add_application_signals_descriptions(self):
+
+        if self.successful_selection_existing_database and self.successful_database_connection:
+            applications_table = self.SignalDataBase.get_tables_names()
+            title = "Add application descriptions"
+            message = "Select application to add:"
+
+            AddModifyDialogWindow = ModifyDialogWindow(
+                applications_table, title, message)
+
+            if AddModifyDialogWindow.exec() and AddModifyDialogWindow.application_to_modify != "":
+
+                signals_and_descriptions_to_add = {
+                    signal: description
+                    for signal, description in self.SignalDataBase.select_application(AddModifyDialogWindow.application_to_modify)}
+
+                actual_signals_and_descriptions = self.get_signals_list_as_dictionary()
+
+                for signal in signals_and_descriptions_to_add:
+                    actual_signals_and_descriptions[signal] = signals_and_descriptions_to_add[signal]
+
+                self.signals_and_descriptions = [
+                    [signal, actual_signals_and_descriptions[signal]]
+                    for signal in actual_signals_and_descriptions]
+
+                self.refresh_table_view()
+
+                message = "Descriptions of {} signals were added.".format(
+                    AddModifyDialogWindow.application_to_modify)
+                self.StatusField.showMessage(message)
+        else:
+            message_text = "The database of signals does not exist or can not establish a connection! Create a new database first!"
+            self.show_information_message_box(message_text)
+
+    def remove_application_signals_descriptions(self):
+
+        if self.successful_selection_existing_database and self.successful_database_connection:
+            applications_table = self.SignalDataBase.get_tables_names()
+            title = "Remove application descriptions"
+            message = "Select application to remove:"
+
+            RemoveModifyDialogWindow = ModifyDialogWindow(
+                applications_table, title, message)
+
+            if RemoveModifyDialogWindow.exec() and RemoveModifyDialogWindow.application_to_modify != "":
+
+                signals_and_descriptions_to_remove = {
+                    signal: description
+                    for signal, description in self.SignalDataBase.select_application(RemoveModifyDialogWindow.application_to_modify)}
+
+                actual_signals_and_descriptions = self.get_signals_list_as_dictionary()
+
+                for signal in signals_and_descriptions_to_remove:
+                    actual_signals_and_descriptions[signal] = ""
+
+                self.signals_and_descriptions = [
+                    [signal, actual_signals_and_descriptions[signal]]
+                    for signal in actual_signals_and_descriptions]
+
+                self.refresh_table_view()
+
+                message = "Descriptions of {} signals were removed.".format(
+                    RemoveModifyDialogWindow.application_to_modify)
+                self.StatusField.showMessage(message)
+        else:
+
+            message_text = "The database of signals does not exist or can not establish a connection! Create a new database first!"
+            self.show_information_message_box(message_text)

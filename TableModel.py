@@ -2,10 +2,10 @@ from PyQt5.QtCore import QAbstractTableModel, Qt, QVariant
 
 
 class TableModel(QAbstractTableModel):
-    def __init__(self, input_data, headerdata):
+    def __init__(self, input_data, header_data):
         super().__init__()
         self.input_data = input_data
-        self.headerdata = headerdata
+        self.header_data = header_data
 
     def data(self, index, role):
 
@@ -37,5 +37,5 @@ class TableModel(QAbstractTableModel):
 
     def headerData(self, column, orientation, role):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            return QVariant(self.headerdata[column])
+            return QVariant(self.header_data[column])
         return QVariant()
