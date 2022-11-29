@@ -9,6 +9,7 @@ import csv
 import sys
 import os
 import glob
+import re
 
 
 class Editor(QMainWindow):
@@ -84,6 +85,13 @@ class Editor(QMainWindow):
         RemoveApplicationButton.triggered.connect(
             self.remove_application_signals_descriptions)
         OptionsMenu.addAction(RemoveApplicationButton)
+
+        AddMarkersFromSrcFile = QAction("&Add markers from .src file", self)
+        AddMarkersFromSrcFile.setStatusTip(
+            'Add markers and descriptions from .src file')
+        AddMarkersFromSrcFile.triggered.connect(
+            self.add_markers_from_src_file)
+        OptionsMenu.addAction(AddMarkersFromSrcFile)
 
         font = MenuBar.font()
         font.setPointSize(11)
@@ -454,3 +462,47 @@ class Editor(QMainWindow):
 
             message_text = "The database of signals does not exist or can not establish a connection! Create a new database first!"
             self.show_information_message_box(message_text)
+
+    def add_markers_from_src_file(self):
+
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, "Open src file", "", "*.src")
+
+        if file_name:
+            with open(file_name, "r") as file:
+
+                try:
+
+                    lines = file.readlines()
+                    actual_signals_and_descriptions = self.get_signals_list_as_dictionary()
+
+                    for line in lines:
+                        marker_line = re.search(
+                            "M[0-9]{1} = |M[0-9]{2} = |M[0-9]{3} =", line)
+
+                        if marker_line:
+
+                            marker = marker_line.group().split(" =")[0]
+
+                            if int(marker.replace("M", "")) in range(0, 200):
+                                index_comment_line = lines.index(line) - 2
+                                comment_line = re.search(
+                                    "--(.*?)--", lines[index_comment_line])
+
+                                if comment_line:
+                                    comment = comment_line.group(1)
+                                    if marker in actual_signals_and_descriptions:
+                                        actual_signals_and_descriptions[marker] = comment
+
+                    self.signals_and_descriptions = [
+                        [signal, actual_signals_and_descriptions[signal]]
+                        for signal in actual_signals_and_descriptions]
+
+                    self.refresh_table_view()
+
+                    message = "Marker descriptions included in {} file were added."
+                    message = message.format(file_name)
+                    self.StatusField.showMessage(message)
+
+                except AttributeError:
+                    self.show_critical_message_box(button=QMessageBox.Ok)
