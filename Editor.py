@@ -93,6 +93,13 @@ class Editor(QMainWindow):
             self.add_markers_from_src_file)
         OptionsMenu.addAction(AddMarkersFromSrcFile)
 
+        AddFlagsFromSrcFile = QAction("&Add flags from .src file", self)
+        AddFlagsFromSrcFile.setStatusTip(
+            'Add flags and descriptions from .src file')
+        AddFlagsFromSrcFile.triggered.connect(
+            self.add_flags_from_src_file)
+        OptionsMenu.addAction(AddFlagsFromSrcFile)
+
         font = MenuBar.font()
         font.setPointSize(11)
         MenuBar.setFont(font)
@@ -501,6 +508,47 @@ class Editor(QMainWindow):
                     self.refresh_table_view()
 
                     message = "Marker descriptions included in {} file were added."
+                    message = message.format(file_name)
+                    self.StatusField.showMessage(message)
+
+                except AttributeError:
+                    self.show_critical_message_box(button=QMessageBox.Ok)
+
+    def add_flags_from_src_file(self):
+
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, "Open src file", "", "*.src")
+
+        if file_name:
+            with open(file_name, "r") as file:
+
+                try:
+
+                    lines = file.readlines()
+                    actual_signals_and_descriptions = self.get_signals_list_as_dictionary()
+
+                    for line in lines:
+                        flag_line = re.search("F9[0-5][0-9] =", line)
+
+                        if flag_line:
+
+                            flag = flag_line.group().strip(" =")
+                            index_comment_line = lines.index(line)-2
+                            comment_line = re.search(
+                                "--(.*?)--", lines[index_comment_line])
+
+                            if comment_line:
+                                comment = comment_line.group(1)
+                                if flag in actual_signals_and_descriptions:
+                                    actual_signals_and_descriptions[flag] = comment
+
+                    self.signals_and_descriptions = [
+                        [signal, actual_signals_and_descriptions[signal]]
+                        for signal in actual_signals_and_descriptions]
+
+                    self.refresh_table_view()
+
+                    message = "Flags descriptions included in {} file were added."
                     message = message.format(file_name)
                     self.StatusField.showMessage(message)
 
