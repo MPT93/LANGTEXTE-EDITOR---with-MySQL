@@ -376,8 +376,9 @@ class Editor(QMainWindow):
 
                 for path in paths_of_all_csv_files:
                     file_name = path.split("/")[-1]
-                    table_name = file_name.replace(
-                        " ", "_").replace(".de.csv", "")
+                    table_name = file_name.replace(" ", "_")
+                    table_name = table_name.replace(".de.csv", "")
+                    table_name = table_name.replace("-", "_")
                     self.successful_table_creation = self.SignalDataBase.create_and_fill_table(
                         path, table_name)
 
