@@ -100,6 +100,14 @@ class Editor(QMainWindow):
             self.add_flags_from_src_file)
         OptionsMenu.addAction(AddFlagsFromSrcFile)
 
+        AddSignalsFromElectricPlan = QAction(
+            "&Add signals from .asc file", self)
+        AddSignalsFromElectricPlan.setStatusTip(
+            'Add signals and descriptions from .asc Eplan file')
+        AddSignalsFromElectricPlan.triggered.connect(
+            self.add_signals_from_asc_file)
+        OptionsMenu.addAction(AddSignalsFromElectricPlan)
+
         font = MenuBar.font()
         font.setPointSize(11)
         MenuBar.setFont(font)
@@ -554,3 +562,45 @@ class Editor(QMainWindow):
 
                 except AttributeError:
                     self.show_critical_message_box(button=QMessageBox.Ok)
+
+    def add_signals_from_asc_file(self):
+
+        signals_changed = False
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, "Open asc file", "", "*.asc")
+
+        if file_name:
+            with open(file_name, "r") as file:
+
+                actual_signals_and_descriptions = self.get_signals_list_as_dictionary()
+
+                lines = file.readlines()
+
+                try:
+
+                    for line in lines:
+                        splitted_line = line.split(',')
+                        signal_name = splitted_line[1].replace('"', '')
+                        signal_name = signal_name.replace(' ', '')
+                        actual_signal_number = int(float(signal_name[1:]))
+                        valve_name = splitted_line[0][10:- 1].replace(" ", "")
+
+                        if (actual_signal_number > 576) & (actual_signal_number < 705):
+                            if valve_name != "":
+                                comment = splitted_line[6].replace('"', '')
+                                if signal_name in actual_signals_and_descriptions:
+                                    signal_description = valve_name + " " + comment
+                                    actual_signals_and_descriptions[signal_name] = signal_description
+                                    signals_changed = True
+
+                except (IndexError, ValueError):
+                    self.show_critical_message_box(button=QMessageBox.Ok)
+
+            self.signals_and_descriptions = [[signal, actual_signals_and_descriptions[signal]]
+                                             for signal in actual_signals_and_descriptions]
+
+            if signals_changed:
+                self.refresh_table_view()
+
+                message = "Descriptions included in {} file were added."
+                self.StatusField.showMessage(message.format(file_name))
