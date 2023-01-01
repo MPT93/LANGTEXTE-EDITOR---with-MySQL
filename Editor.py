@@ -2,6 +2,7 @@ from TableModel import TableModel
 from ProgressDialog import ProgressDialog
 from SignalDataBase import SignalDataBase
 from ModifyDialogWindow import ModifyDialogWindow
+from PlcDialogWindow import PlcDialogWindow
 from PyQt5.QtWidgets import QMainWindow, QStatusBar, QTableView, QAction, QMessageBox, QDesktopWidget, QFileDialog
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QUrl, Qt
@@ -10,6 +11,7 @@ import sys
 import os
 import glob
 import re
+import openpyxl as xl
 
 
 class Editor(QMainWindow):
@@ -107,6 +109,13 @@ class Editor(QMainWindow):
         AddSignalsFromElectricPlan.triggered.connect(
             self.add_signals_from_asc_file)
         OptionsMenu.addAction(AddSignalsFromElectricPlan)
+
+        AddPlcSignals = QAction("&Add signals from .xlsm file", self)
+        AddPlcSignals.setStatusTip(
+            'Add plc signals and descriptions from .xlsm file')
+        AddPlcSignals.triggered.connect(
+            self.add_plc_signals_from_xlsm_file)
+        OptionsMenu.addAction(AddPlcSignals)
 
         font = MenuBar.font()
         font.setPointSize(11)
@@ -605,3 +614,39 @@ class Editor(QMainWindow):
 
                 message = "Descriptions included in {} file were added."
                 self.StatusField.showMessage(message.format(file_name))
+
+    def add_plc_signals_from_xlsm_file(self):
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Select file", "", "*.xlsm")
+
+        if file_path:
+            workbook = xl.load_workbook(file_path)
+
+            sheets_with_robot = []
+
+            for sheet in workbook.sheetnames:
+                if "R0" in sheet:
+                    sheets_with_robot.append(sheet)
+
+            title = "Add plc signals from .xlsm file"
+            message = "Select sheet to add:"
+            actual_signals_and_descriptions = self.get_signals_list_as_dictionary()
+
+            PlcSignalsDialogWindow = PlcDialogWindow(
+                sheets_with_robot, title, message, workbook, actual_signals_and_descriptions)
+
+            if PlcSignalsDialogWindow.exec_() and PlcSignalsDialogWindow.sheet_to_add_name != "":
+
+                actual_signals_and_descriptions = PlcSignalsDialogWindow.get_robot_collisions_signals()
+                actual_signals_and_descriptions = PlcSignalsDialogWindow.get_robot_plc_signals()
+
+                self.signals_and_descriptions = [
+                    [signal, actual_signals_and_descriptions[signal]]
+                    for signal in actual_signals_and_descriptions
+                ]
+
+                self.refresh_table_view()
+
+                message = "Descriptions included in {} file were added."
+                self.StatusField.showMessage(message.format(file_path))
