@@ -33,6 +33,7 @@ class Editor(QMainWindow):
 
         FileMenu = MenuBar.addMenu("&File")
         OptionsMenu = MenuBar.addMenu("&Options")
+        AboutMenu = MenuBar.addMenu("&?")
 
         self.NewButton = QAction("&New", self)
         self.NewButton.setShortcut('Ctrl+N')
@@ -116,6 +117,11 @@ class Editor(QMainWindow):
         AddPlcSignals.triggered.connect(
             self.add_plc_signals_from_xlsm_file)
         OptionsMenu.addAction(AddPlcSignals)
+
+        AboutButton = QAction("&?", self)
+        AboutButton.setStatusTip('Show detail about this program')
+        AboutButton.triggered.connect(self.get_infos_abut_the_program)
+        AboutMenu.addAction(AboutButton)
 
         font = MenuBar.font()
         font.setPointSize(11)
@@ -650,3 +656,19 @@ class Editor(QMainWindow):
 
                 message = "Descriptions included in {} file were added."
                 self.StatusField.showMessage(message.format(file_path))
+
+    def get_infos_abut_the_program(self):
+
+        base_path = os.getcwd()
+        copyright_path = os.path.join(base_path, "info\\licenses\\Copyright")
+
+        with open(copyright_path, "r") as f:
+            message_text = f.read()
+
+        button = QMessageBox.Ok
+        window_title = "About " + self.title[:-2]
+
+        Reply = QMessageBox.information(
+            self, window_title, message_text, button)
+
+        return Reply
